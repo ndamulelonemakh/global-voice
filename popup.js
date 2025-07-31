@@ -16,10 +16,28 @@ saveKeyButton.addEventListener('click', () => {
 let mediaRecorder;
 let chunks = [];
 
+async function checkMicrophonePermission() {
+  try {
+    const result = await navigator.permissions.query({ name: 'microphone' });
+    console.log('Microphone permission status:', result.state);
+    return result.state;
+  } catch (error) {
+    console.log('Permissions API not supported, will try direct access');
+    return 'unknown';
+  }
+}
+
 recordButton.addEventListener('click', async () => {
   if (!recording) {
     try {
+      console.log('Attempting to access microphone...');
+      const permissionStatus = await checkMicrophonePermission();
+      console.log('Permission status:', permissionStatus);
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('getUserMedia not supported in this browser');
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('Microphone access granted');
       mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.start();
       recording = true;
@@ -39,7 +57,29 @@ recordButton.addEventListener('click', async () => {
 
     } catch (error) {
       console.error('Error starting recording:', error);
-      status.textContent = 'Error starting recording.';
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      
+      let errorMessage = 'Error starting recording.';
+
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Microphone access denied. Please click the microphone icon in your browser\'s address bar and allow access, then try again.';
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'No microphone found. Please connect a microphone.';
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = 'Audio recording not supported in this browser.';
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = 'Microphone is being used by another application.';
+      } else if (error.name === 'AbortError') {
+        errorMessage = 'Microphone access was aborted.';
+      } else if (error.name === 'SecurityError') {
+        errorMessage = 'Microphone access blocked by security policy.';
+      } else {
+        errorMessage = `Recording error: ${error.name} - ${error.message}`;
+      }
+
+      status.textContent = errorMessage;
     }
   } else {
     mediaRecorder.stop();
