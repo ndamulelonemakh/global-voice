@@ -8,6 +8,8 @@ A simple and lightweight Chrome extension that enables advanced voice input capa
 
 ![Global Voice Demo](./demo.gif)
 
+> **Disclaimer**: Audio is processed by Google Gemini API (subject to Google's privacy policy). Since this is self-hosted, you are in control and responsible for your data security.
+
 ## ✨ Features
 
 - **Fast transcriptions** powered by [Gemini 2.5 Flash Lite](https://ai.google.dev/gemini-api/docs/models#gemini-2.5-flash-lite)
