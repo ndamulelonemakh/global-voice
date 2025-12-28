@@ -6,6 +6,8 @@
 
 A simple and lightweight Chrome extension that enables advanced voice input capabilities in any web application. Use your microphone to input text in any text field, textarea, or contenteditable element across the web.
 
+![Global Voice Demo](./demo.gif)
+
 ## ✨ Features
 
 - **Fast transcriptions** powered by [Gemini 2.5 Flash Lite](https://ai.google.dev/gemini-api/docs/models#gemini-2.5-flash-lite)

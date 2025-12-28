@@ -134,6 +134,23 @@ body {
   vertical-align: middle;
 }
 
+.btn-record .mic-icon {
+  transition: transform 0.2s ease;
+}
+
+.btn-record:hover .mic-icon {
+  transform: scale(1.1);
+}
+
+.btn-record.recording .mic-icon {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
 .btn-record span {
   line-height: 1;
 }
