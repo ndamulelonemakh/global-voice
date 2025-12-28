@@ -1,4 +1,4 @@
-# 🎤 Global Voice
+# 🎤 Global Voice [Self-Hosted Voice Input] 
 
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-yellow.svg)](https://www.google.com/chrome/)
@@ -8,12 +8,12 @@ A simple and lightweight Chrome extension that enables advanced voice input capa
 
 ## ✨ Features
 
-- ⚡ **Fast transcriptions** powered by [Gemini 2.5 Flash Lite](https://ai.google.dev/gemini-api/docs/models#gemini-2.5-flash-lite)
-- 🌐 **Universal compatibility** - works with any text field, textarea, or contenteditable element
-- 🔒 **Secure API key storage** using Chrome's storage API (synced across devices)
-- 🎯 **Smart element detection** - automatically inserts transcription into focused fields
-- 🔐 **Privacy-conscious** - extension collects no data; audio processed by Google Gemini API (subject to [Google's privacy policy](https://policies.google.com/privacy))
-- 🚀 **Manifest V3** - built with the latest Chrome extension standards
+- **Fast transcriptions** powered by [Gemini 2.5 Flash Lite](https://ai.google.dev/gemini-api/docs/models#gemini-2.5-flash-lite)
+- **Universal compatibility** - works with any text field, textarea, or contenteditable element
+- **Secure API key storage** using Chrome's storage API (synced across devices)
+- **Smart element detection** - automatically inserts transcription into focused fields
+- **Privacy-conscious** - extension collects no data; audio processed by Google Gemini API (subject to [Google's privacy policy](https://policies.google.com/privacy))
+- **Manifest V3** - built with the latest Chrome extension standards
 
 ## 🚀 Quick Start
 
