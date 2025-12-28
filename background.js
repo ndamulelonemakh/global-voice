@@ -2,6 +2,73 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 let creatingOffscreen = false;
+let recordingTargetTabId = null;
+
+function queryTabs(query) {
+  return new Promise((resolve) => chrome.tabs.query(query, resolve));
+}
+
+function executeScript(details) {
+  return new Promise((resolve, reject) => {
+    chrome.scripting.executeScript(details, (result) => {
+      const err = chrome.runtime.lastError;
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(result);
+    });
+  });
+}
+
+async function insertTranscriptIntoTab(tabId, transcript) {
+  if (!tabId) return;
+  try {
+    await executeScript({
+      target: { tabId },
+      args: [transcript],
+      func: (text) => {
+        const el = document.activeElement;
+        if (!el) return;
+
+        const isTextInput =
+          el.tagName === 'TEXTAREA' ||
+          (el.tagName === 'INPUT' &&
+            ['text', 'search', 'email', 'url', 'tel', 'password', 'number'].includes(el.type));
+
+        if (isTextInput) {
+          const value = el.value ?? '';
+          const start = typeof el.selectionStart === 'number' ? el.selectionStart : value.length;
+          const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : value.length;
+          el.value = value.slice(0, start) + text + value.slice(end);
+          const cursor = start + text.length;
+          try {
+            el.setSelectionRange(cursor, cursor);
+          } catch (_) {
+            // ignore
+          }
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
+
+        if (el.isContentEditable) {
+          // Best-effort insertion at caret
+          try {
+            document.execCommand('insertText', false, text);
+          } catch (_) {
+            el.textContent = (el.textContent || '') + text;
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.warn('Unable to insert transcript into page:', e);
+    chrome.runtime.sendMessage({
+      error:
+        'Could not insert text into the page. Click the text field again and retry, or ensure the page allows extensions.'
+    });
+  }
+}
 
 async function setupOffscreenDocument() {
   const offscreenUrl = chrome.runtime.getURL('offscreen.html');
@@ -34,6 +101,9 @@ async function setupOffscreenDocument() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'request-start-recording') {
+    if (typeof request.targetTabId === 'number') {
+      recordingTargetTabId = request.targetTabId;
+    }
     setupOffscreenDocument().then(() => {
       chrome.runtime.sendMessage({ type: 'start-recording' });
     }).catch(error => {
@@ -77,6 +147,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           
           const response = await result.response;
           const text = response.text();
+          await insertTranscriptIntoTab(recordingTargetTabId, text);
           chrome.runtime.sendMessage({ transcript: text });
         } catch (error) {
           console.error('Error transcribing audio:', error);

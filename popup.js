@@ -14,7 +14,7 @@ saveKeyButton.addEventListener('click', () => {
   });
 });
 
-// Check if we already have microphone permission
+
 async function checkMicPermission() {
   try {
     const result = await navigator.permissions.query({ name: 'microphone' });
@@ -27,7 +27,7 @@ async function checkMicPermission() {
   }
 }
 
-// Open the setup page to get permission
+
 function openMicSetupPage() {
   chrome.tabs.create({ url: chrome.runtime.getURL('mic-setup.html') });
 }
@@ -44,16 +44,17 @@ recordButton.addEventListener('click', async () => {
     }
     
     if (permState !== 'granted') {
-      // Need to get permission first - open setup page
       status.textContent = 'Opening microphone setup...';
       openMicSetupPage();
       return;
     }
     
-    // Permission granted, start recording via offscreen
     try {
       console.log('Requesting recording start via background...');
-      chrome.runtime.sendMessage({ type: 'request-start-recording' });
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs && tabs[0] ? tabs[0].id : undefined;
+        chrome.runtime.sendMessage({ type: 'request-start-recording', targetTabId: tabId });
+      });
       status.textContent = 'Starting...';
     } catch (error) {
       console.error('Error requesting recording:', error);
@@ -82,9 +83,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     recordButton.classList.remove('recording');
     status.textContent = 'Transcribing...';
   } else if (request.transcript) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { type: 'insert', transcript: request.transcript });
-    });
     status.textContent = 'Done!';
   } else if (request.error) {
     status.textContent = request.error;
