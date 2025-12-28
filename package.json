@@ -4,7 +4,10 @@
   "description": "Global Voice is a simple and lightweight chrome extension that enables advanced voice input capabilities in any web application. It allows users to use their microphone to input text in any text field, textarea, or contenteditable element across the web.",
   "main": "background.js",
   "scripts": {
-    "build": "webpack"
+    "build": "webpack",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
   },
   "keywords": [],
   "author": "",
@@ -13,6 +16,7 @@
     "@google/generative-ai": "^0.24.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.10",
     "webpack": "^5.101.0",
     "webpack-cli": "^6.0.1"
   }
