@@ -3,7 +3,7 @@ const statusDiv = document.getElementById('status');
 
 enableButton.addEventListener('click', async () => {
   enableButton.disabled = true;
-  enableButton.textContent = 'Requesting access...';
+  enableButton.textContent = 'Requesting...';
   
   try {
     // This WILL show the permission prompt because we're in a visible tab with user gesture
@@ -17,30 +17,29 @@ enableButton.addEventListener('click', async () => {
     
     statusDiv.style.display = 'block';
     statusDiv.className = 'status success';
-    statusDiv.textContent = '✓ Microphone access granted! You can close this tab and use the extension.';
+    statusDiv.textContent = 'Microphone access granted. You can close this tab.';
     
-    enableButton.textContent = 'Permission Granted ✓';
+    enableButton.textContent = 'Allowed';
     
-    // Auto-close after 2 seconds
+    // Auto-close after 1.5 seconds
     setTimeout(() => {
       window.close();
-    }, 2000);
+    }, 1500);
     
   } catch (error) {
     console.error('Microphone access error:', error);
     
     statusDiv.style.display = 'block';
     statusDiv.className = 'status error';
+    enableButton.disabled = false;
+    enableButton.textContent = 'Allow';
     
     if (error.name === 'NotAllowedError') {
-      statusDiv.innerHTML = '✗ Permission denied. Please click the camera icon in the address bar and allow microphone access, or check macOS System Settings → Privacy & Security → Microphone → Chrome';
+      statusDiv.innerHTML = 'Permission denied. Click the camera icon in the address bar to allow access, or check System Settings → Privacy & Security → Microphone.';
     } else if (error.name === 'NotFoundError') {
-      statusDiv.textContent = '✗ No microphone found. Please connect a microphone.';
+      statusDiv.textContent = 'No microphone detected. Please connect a microphone and try again.';
     } else {
-      statusDiv.textContent = `✗ Error: ${error.message}`;
+      statusDiv.textContent = `Unable to access microphone: ${error.message}`;
     }
-    
-    enableButton.disabled = false;
-    enableButton.textContent = 'Try Again';
   }
 });
