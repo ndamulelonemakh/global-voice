@@ -7,7 +7,9 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "offscreen",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -33,5 +35,11 @@
     "16": "images/icon16.png",
     "48": "images/icon48.png",
     "128": "images/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["mic-setup.html", "mic-setup.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
