@@ -1,11 +1,10 @@
-
 const recordButton = document.getElementById('record');
 const apiKeyInput = document.getElementById('api-key');
 const saveKeyButton = document.getElementById('save-key');
 const status = document.getElementById('status');
 
 let recording = false;
-let micPermissionGranted = false;
+let _micPermissionGranted = false;
 
 saveKeyButton.addEventListener('click', () => {
   const apiKey = apiKeyInput.value;
@@ -13,47 +12,142 @@ saveKeyButton.addEventListener('click', () => {
     status.textContent = 'API key saved.';
   });
 });
-
-// Check if we already have microphone permission
 async function checkMicPermission() {
   try {
     const result = await navigator.permissions.query({ name: 'microphone' });
-    micPermissionGranted = result.state === 'granted';
-    console.log('Mic permission state:', result.state);
+    _micPermissionGranted = result.state === 'granted';
     return result.state;
-  } catch (e) {
+  } catch (_e) {
     console.log('Permissions API not available');
     return 'unknown';
   }
 }
-
-// Open the setup page to get permission
 function openMicSetupPage() {
   chrome.tabs.create({ url: chrome.runtime.getURL('mic-setup.html') });
+}
+
+function executeScript(details) {
+  return new Promise((resolve, reject) => {
+    chrome.scripting.executeScript(details, (result) => {
+      const err = chrome.runtime.lastError;
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(result);
+    });
+  });
 }
 
 recordButton.addEventListener('click', async () => {
   if (!recording) {
     const permState = await checkMicPermission();
-    
+
     if (permState === 'denied') {
       status.textContent = 'Microphone blocked. Click to open settings.';
       status.style.cursor = 'pointer';
       status.onclick = openMicSetupPage;
       return;
     }
-    
+
     if (permState !== 'granted') {
-      // Need to get permission first - open setup page
       status.textContent = 'Opening microphone setup...';
       openMicSetupPage();
       return;
     }
-    
-    // Permission granted, start recording via offscreen
+
     try {
-      console.log('Requesting recording start via background...');
-      chrome.runtime.sendMessage({ type: 'request-start-recording' });
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tabId = tabs?.[0] ? tabs[0].id : undefined;
+        (async () => {
+          let target = null;
+          try {
+            if (typeof tabId === 'number') {
+              const results = await executeScript({
+                target: { tabId },
+                func: () => {
+                  const el = document.activeElement;
+                  if (!el) return null;
+
+                  const isTextInput =
+                    el.tagName === 'TEXTAREA' ||
+                    (el.tagName === 'INPUT' &&
+                      [
+                        'text',
+                        'search',
+                        'email',
+                        'url',
+                        'tel',
+                        'password',
+                        'number',
+                      ].includes(el.type));
+                  const isEditable = el.isContentEditable === true;
+
+                  if (!isTextInput && !isEditable) return null;
+
+                  const esc = (s) => CSS.escape(s);
+
+                  const selectorFor = (node) => {
+                    if (!node || node.nodeType !== 1) return null;
+                    if (node.id) return `#${esc(node.id)}`;
+                    if (node.getAttribute?.('name')) {
+                      return `${node.tagName.toLowerCase()}[name="${node.getAttribute('name').replace(/"/g, '\\"')}"]`;
+                    }
+
+                    const parts = [];
+                    let cur = node;
+                    let depth = 0;
+                    while (
+                      cur &&
+                      cur.nodeType === 1 &&
+                      cur !== document.body &&
+                      depth < 6
+                    ) {
+                      let part = cur.tagName.toLowerCase();
+                      const className = (cur.getAttribute('class') || '')
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map(esc)
+                        .join('.');
+                      if (className) part += `.${className}`;
+
+                      const parent = cur.parentElement;
+                      if (!parent) break;
+                      const siblings = Array.from(parent.children).filter(
+                        (c) => c.tagName === cur.tagName,
+                      );
+                      if (siblings.length > 1) {
+                        const index = siblings.indexOf(cur) + 1;
+                        part += `:nth-of-type(${index})`;
+                      }
+                      parts.unshift(part);
+                      cur = parent;
+                      depth++;
+                    }
+                    if (parts.length === 0) return null;
+                    return parts.join(' > ');
+                  };
+
+                  return {
+                    selector: selectorFor(el),
+                    isTextInput,
+                    isEditable,
+                  };
+                },
+              });
+              target = results?.[0] ? results[0].result : null;
+            }
+          } catch (_e) {
+            target = null;
+          }
+          chrome.runtime.sendMessage({
+            type: 'request-start-recording',
+            targetTabId: tabId,
+            targetElement: target,
+          });
+        })();
+      });
       status.textContent = 'Starting...';
     } catch (error) {
       console.error('Error requesting recording:', error);
@@ -65,26 +159,26 @@ recordButton.addEventListener('click', async () => {
   }
 });
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request) => {
   if (request.type === 'recording-started') {
     recording = true;
-    recordButton.innerHTML = '<svg class="mic-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 6h12v12H6z"/></svg><span>Stop Recording</span>';
+    recordButton.innerHTML =
+      '<svg class="mic-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 6h12v12H6z"/></svg><span>Stop Recording</span>';
     recordButton.classList.add('recording');
     status.textContent = 'Recording...';
   } else if (request.type === 'recording-error') {
     status.textContent = request.error;
     recording = false;
-    recordButton.innerHTML = '<svg class="mic-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg><span>Start Recording</span>';
+    recordButton.innerHTML =
+      '<svg class="mic-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg><span>Start Recording</span>';
     recordButton.classList.remove('recording');
   } else if (request.type === 'recording-stopped') {
     recording = false;
-    recordButton.innerHTML = '<svg class="mic-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg><span>Start Recording</span>';
+    recordButton.innerHTML =
+      '<svg class="mic-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg><span>Start Recording</span>';
     recordButton.classList.remove('recording');
     status.textContent = 'Transcribing...';
   } else if (request.transcript) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { type: 'insert', transcript: request.transcript });
-    });
     status.textContent = 'Done!';
   } else if (request.error) {
     status.textContent = request.error;
@@ -96,3 +190,4 @@ chrome.storage.sync.get('apiKey', (data) => {
     apiKeyInput.value = data.apiKey;
   }
 });
+apiKeyInput.value = data.apiKey;
